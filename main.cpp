@@ -25,32 +25,29 @@ int main(int argv, char **argc)
 		std::string buff = "/dev/input/";
 
 		DIR *pDIR;
-		if( !(pDIR=opendir(buff.c_str()) ))
+		if( !(pDIR=opendir(buff.c_str())))
 			return 1;
 
 		std::list<dirent> files;
 		while(dirent * entry = readdir(pDIR))
 			files.push_back(*entry);
 
-		std::remove_if(files.begin(), files.end(), [](auto file){return ( strcmp(file.d_name, ".") != 0 || strcmp(file.d_name, "..") != 0| file.d_type != DT_CHR);});
+		files.remove_if([](auto & file)->bool{return !(strcmp(file.d_name, ".") && strcmp(file.d_name, "..") && file.d_type == DT_CHR);});
 
-		std::list<std::string> filesName(files.size());
-		for (auto file : files)
+		std::list<std::string> filesName;
+		for (auto & file : files)
 			filesName.push_back(file.d_name);
 
 		filesName.sort([](auto& lhs, auto& rhs){return strcasecmp(lhs.c_str(), rhs.c_str()) < 0;});
 
-
-
 		for (auto file : filesName)
 		{
-			std::cout << std::endl << "*****************************************" << std::endl;
-			file.insert(0, buff);
-			std::cout << file << std::endl;
+			std::cout << file << " ";
 
+			file.insert(0, buff);
 			int	fd = open(file.c_str(), O_RDONLY|O_NONBLOCK);
 			if (fd < 0) {
-				perror("Failed to open device");
+				perror("Failed to open device\n");
 				continue;
 			}
 
@@ -61,12 +58,12 @@ int main(int argv, char **argc)
 				continue;
 			}
 
-			printf("Input device ID: bus %#x vendor %#x product %#x\n",
+			printf(" \tbus: %#x   \tvnd: %#x   \tprd: %#x   \tver: %x   \tname: \"%s\"\n",
 				   libevdev_get_id_bustype(dev),
 				   libevdev_get_id_vendor(dev),
-				   libevdev_get_id_product(dev));
-			printf("Evdev version: %x\n", libevdev_get_driver_version(dev));
-			printf("Input device name: \"%s\"\n", libevdev_get_name(dev));
+				   libevdev_get_id_product(dev),
+				   libevdev_get_driver_version(dev),
+				   libevdev_get_name(dev));
 
 			libevdev_free(dev);
 			close(fd);
